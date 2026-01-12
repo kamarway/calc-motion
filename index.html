@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion Design Calc</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-hint-color: #999999;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container { max-width: 500px; margin: 0 auto; }
+
+        h2 { font-size: 1.2rem; margin-bottom: 20px; text-align: center; }
+
+        .section { margin-bottom: 20px; }
+
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; }
+
+        select, input[type="number"], .range-val {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--tg-theme-hint-color);
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        .result-box {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        #total-price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--tg-theme-button-color);
+        }
+
+        .main-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Калькулятор Motion Design</h2>
+
+    <div class="section">
+        <label>Тип графики</label>
+        <select id="style" onchange="calculate()">
+            <option value="1000">2D Анимация (базовая)</option>
+            <option value="2500">2D Персонажная анимация</option>
+            <option value="4000">3D Продуктовый ролик</option>
+            <option value="6000">Сложный 3D/VFX</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <label>Длительность (сек): <span id="dur-val">15</span></label>
+        <input type="range" id="duration" min="5" max="120" step="5" value="15" 
+               style="width: 100%;" oninput="updateDuration(this.value)">
+    </div>
+
+    <div class="section">
+        <label>Сложность (коэффициент)</label>
+        <select id="complexity" onchange="calculate()">
+            <option value="1">Стандарт (есть сценарий и ассеты)</option>
+            <option value="1.5">Средняя (нужна раскадровка)</option>
+            <option value="2.2">Под ключ (сценарий + звук + дизайн)</option>
+        </select>
+    </div>
+
+    <div class="result-box">
+        <div>Предварительная стоимость:</div>
+        <div id="total-price">0 ₽</div>
+    </div>
+
+    <button class="main-button" onclick="sendData()">Отправить расчет боту</button>
+</div>
+
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand(); // Расширяем на все окно
+
+    function updateDuration(val) {
+        document.getElementById('dur-val').innerText = val;
+        calculate();
+    }
+
+    function calculate() {
+        const basePricePerSec = parseFloat(document.getElementById('style').value);
+        const duration = parseInt(document.getElementById('duration').value);
+        const complexity = parseFloat(document.getElementById('complexity').value);
+
+        // Формула: (База за сек * длительность) * сложность
+        let total = (basePricePerSec * duration) * complexity;
+        
+        document.getElementById('total-price').innerText = total.toLocaleString() + " ₽";
+        return total;
+    }
+
+    function sendData() {
+        const total = calculate();
+        const styleName = document.getElementById('style').options[document.getElementById('style').selectedIndex].text;
+        
+        const data = {
+            total_price: total,
+            style: styleName,
+            duration: document.getElementById('duration').value,
+            complexity: document.getElementById('complexity').options[document.getElementById('complexity').selectedIndex].text
+        };
+
+        tg.sendData(JSON.stringify(data)); // Отправляет данные боту
+    }
+
+    // Первичный расчет при загрузке
+    calculate();
+</script>
+
+</body>
+</html>
