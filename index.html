@@ -12,6 +12,8 @@
             --tg-theme-button-color: #2481cc;
             --tg-theme-button-text-color: #ffffff;
             --tg-theme-hint-color: #999999;
+            --tg-viewport-height: 100vh;
+            --tg-viewport-stable-height: 100vh;
         }
 
         body {
@@ -20,6 +22,8 @@
             color: var(--tg-theme-text-color);
             margin: 0;
             padding: 20px;
+            height: var(--tg-viewport-height);
+            box-sizing: border-box;
         }
 
         .container { max-width: 500px; margin: 0 auto; }
@@ -68,6 +72,17 @@
             margin-top: 20px;
             cursor: pointer;
         }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -88,7 +103,7 @@
     <div class="section">
         <label>Длительность (сек): <span id="dur-val">15</span></label>
         <input type="range" id="duration" min="5" max="120" step="5" value="15" 
-               style="width: 100%;" oninput="updateDuration(this.value)">
+               oninput="updateDuration(this.value)">
     </div>
 
     <div class="section">
@@ -105,12 +120,44 @@
         <div id="total-price">0 ₽</div>
     </div>
 
-    <button class="main-button" onclick="sendData()">Отправить расчет боту</button>
+    <button class="main-button" id="sendBtn" onclick="sendData()">Отправить расчет боту</button>
+    <div id="status"></div>
 </div>
 
 <script>
-    let tg = window.Telegram.WebApp;
-    tg.expand(); // Расширяем на все окно
+    let tg = window.Telegram?.WebApp;
+    
+    // Инициализация Telegram WebApp
+    if (tg) {
+        tg.ready();  // Критически важно для sendData!
+        tg.expand();
+        
+        // Автообновление темы
+        tg.onEvent('themeChanged', () => {
+            updateTheme();
+        });
+        
+        updateTheme();
+        showStatus('WebApp готов', 'success');
+    } else {
+        showStatus('Telegram WebApp не доступен (тестовый режим)', 'error');
+        document.getElementById('sendBtn').style.background = '#999';
+    }
+
+    function updateTheme() {
+        const theme = tg.themeParams;
+        document.documentElement.style.setProperty('--tg-theme-bg-color', theme.bg_color);
+        document.documentElement.style.setProperty('--tg-theme-text-color', theme.text_color);
+        document.documentElement.style.setProperty('--tg-theme-button-color', theme.button_color);
+        document.documentElement.style.setProperty('--tg-theme-button-text-color', theme.button_text_color);
+        document.documentElement.style.setProperty('--tg-theme-hint-color', theme.hint_color);
+    }
+
+    function showStatus(message, type) {
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+    }
 
     function updateDuration(val) {
         document.getElementById('dur-val').innerText = val;
@@ -122,28 +169,39 @@
         const duration = parseInt(document.getElementById('duration').value);
         const complexity = parseFloat(document.getElementById('complexity').value);
 
-        // Формула: (База за сек * длительность) * сложность
         let total = (basePricePerSec * duration) * complexity;
-        
         document.getElementById('total-price').innerText = total.toLocaleString() + " ₽";
         return total;
     }
 
     function sendData() {
+        if (!tg) {
+            showStatus('Telegram недоступен', 'error');
+            return;
+        }
+
         const total = calculate();
-        const styleName = document.getElementById('style').options[document.getElementById('style').selectedIndex].text;
+        const styleEl = document.getElementById('style');
+        const complexityEl = document.getElementById('complexity');
         
         const data = {
             total_price: total,
-            style: styleName,
+            style: styleEl.options[styleEl.selectedIndex].text,
             duration: document.getElementById('duration').value,
-            complexity: document.getElementById('complexity').options[document.getElementById('complexity').selectedIndex].text
+            complexity: complexityEl.options[complexityEl.selectedIndex].text
         };
 
-        tg.sendData(JSON.stringify(data)); // Отправляет данные боту
+        try {
+            tg.sendData(JSON.stringify(data));
+            showStatus('Данные отправлены боту!', 'success');
+            console.log('Отправлено:', data);
+        } catch (error) {
+            console.error('Ошибка sendData:', error);
+            showStatus('Ошибка отправки: ' + error.message, 'error');
+        }
     }
 
-    // Первичный расчет при загрузке
+    // Первичный расчет
     calculate();
 </script>
 
